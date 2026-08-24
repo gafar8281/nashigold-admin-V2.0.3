@@ -175,7 +175,6 @@ export function EmployeesPage() {
           open={formOpen}
           onOpenChange={setFormOpen}
           employee={editingEmployee}
-          existingEmployees={employees}
           onCreate={addEmployee}
           onUpdate={editEmployee}
         />

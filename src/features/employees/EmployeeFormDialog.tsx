@@ -1,10 +1,10 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { Controller, useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 import { JOB_TITLES, TARGET_UNITS } from "@/lib/constants"
-import { suggestNextEmployeeId } from "@/lib/firestore/employees"
+import { fetchNextEmployeeId } from "@/lib/firestore/employees"
 import type { EmployeeUpdateValues } from "@/lib/firestore/employees"
 import type { Employee, EmployeeWritePayload } from "@/types/employee"
 import { useBranches } from "@/hooks/use-branches"
@@ -42,20 +42,16 @@ interface EmployeeFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   employee?: Employee
-  existingEmployees: Employee[]
   onCreate: (payload: EmployeeWritePayload) => Promise<boolean>
   onUpdate: (id: string, values: EmployeeUpdateValues) => Promise<boolean>
 }
 
-function buildDefaultValues(
-  employee: Employee | undefined,
-  existingEmployees: Employee[]
-): EmployeeFormInput {
+function buildDefaultValues(employee: Employee | undefined): EmployeeFormInput {
   if (employee) {
     return { ...employee, password: "" }
   }
   return {
-    id: suggestNextEmployeeId(existingEmployees),
+    id: "",
     name: "",
     job_title: "Branch Manager",
     branch: "",
@@ -72,7 +68,6 @@ export function EmployeeFormDialog({
   open,
   onOpenChange,
   employee,
-  existingEmployees,
   onCreate,
   onUpdate,
 }: EmployeeFormDialogProps) {
@@ -84,33 +79,64 @@ export function EmployeeFormDialog({
   const { isLoading: branchesLoading } = useBranches()
   const { branches } = useBranchScope()
 
+  const [idStatus, setIdStatus] = useState<"idle" | "loading" | "error">("idle")
+
   const {
     register,
     control,
     handleSubmit,
     reset,
     setError,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm<EmployeeFormInput, unknown, EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
-    defaultValues: buildDefaultValues(employee, existingEmployees),
+    defaultValues: buildDefaultValues(employee),
   })
 
   useEffect(() => {
-    if (open) {
-      reset(buildDefaultValues(employee, existingEmployees))
+    if (!open) return
+    reset(buildDefaultValues(employee))
+    if (employee) return
+
+    let cancelled = false
+    setIdStatus("loading")
+    fetchNextEmployeeId()
+      .then((id) => {
+        if (cancelled) return
+        setValue("id", id)
+        setIdStatus("idle")
+      })
+      .catch(() => {
+        if (cancelled) return
+        setIdStatus("error")
+      })
+    return () => {
+      cancelled = true
     }
-    // existingEmployees intentionally omitted — only used to seed a
-    // suggested id when the dialog opens, not on every list update.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, employee, reset])
+  }, [open, employee, reset, setValue])
+
+  function retryFetchId() {
+    setIdStatus("loading")
+    fetchNextEmployeeId()
+      .then((id) => {
+        setValue("id", id)
+        setIdStatus("idle")
+      })
+      .catch(() => setIdStatus("error"))
+  }
 
   const watchedBranch = watch("branch")
 
   async function onSubmit(values: EmployeeFormValues) {
     if (!isEdit && !values.password) {
       setError("password", { message: "Password is required for new employees." })
+      return
+    }
+
+    if (!isEdit && !values.id) {
+      setError("id", { message: "Employee id is still being generated — please wait." })
       return
     }
 
@@ -135,7 +161,13 @@ export function EmployeeFormDialog({
         })
       : await onCreate(values as EmployeeWritePayload)
 
-    if (ok) onOpenChange(false)
+    if (ok) {
+      onOpenChange(false)
+    } else if (!isEdit) {
+      // Most likely cause of a failed create is an id collision (e.g. two
+      // admins adding at once) — refresh so a retry gets a free id.
+      retryFetchId()
+    }
   }
 
   return (
@@ -149,7 +181,24 @@ export function EmployeeFormDialog({
             <div className="grid grid-cols-2 gap-3">
               <Field data-invalid={!!errors.id}>
                 <FieldLabel htmlFor="id">Employee id</FieldLabel>
-                <Input id="id" disabled={isEdit} {...register("id")} />
+                <Input
+                  id="id"
+                  disabled
+                  placeholder={!isEdit && idStatus === "loading" ? "Generating…" : undefined}
+                  {...register("id")}
+                />
+                {!isEdit && idStatus === "error" && (
+                  <FieldDescription className="text-destructive">
+                    Couldn't generate an id.{" "}
+                    <button
+                      type="button"
+                      className="underline underline-offset-2"
+                      onClick={retryFetchId}
+                    >
+                      Retry
+                    </button>
+                  </FieldDescription>
+                )}
                 <FieldError>{errors.id?.message}</FieldError>
               </Field>
               <Field data-invalid={!!errors.branch}>
@@ -302,7 +351,10 @@ export function EmployeeFormDialog({
           </FieldGroup>
 
           <DialogFooter>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || (!isEdit && idStatus !== "idle")}
+            >
               {isSubmitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

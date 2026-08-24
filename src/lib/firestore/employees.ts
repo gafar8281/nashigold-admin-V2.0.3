@@ -103,13 +103,27 @@ export async function getEmployeeCountByBranch(branchCode: string): Promise<numb
   return snapshot.data().count
 }
 
-/** Suggests the next numeric id from already-loaded employees; admin can override it. */
-export function suggestNextEmployeeId(employees: Employee[]): string {
-  const numericIds = employees
-    .map((employee) => Number(employee.id))
-    .filter((n) => Number.isFinite(n))
+/** Pure id-math helper: highest numeric id + 1, or "1000" if none are numeric. */
+export function nextEmployeeIdFrom(ids: string[]): string {
+  const numericIds = ids.map((id) => Number(id)).filter((n) => Number.isFinite(n))
   if (numericIds.length === 0) return "1000"
   return String(Math.max(...numericIds) + 1)
+}
+
+/**
+ * Deliberately unscoped — employee ids are document ids of the whole
+ * collection, so a branch-scoped max would collide with ids the caller
+ * cannot see. Never apply managedBranches here.
+ *
+ * Fetches every document id in the collection (one full-collection read
+ * per Add-dialog open; the web SDK has no field projection, so mapping
+ * only `.id` — never `.data()` — is the available mitigation, keeping
+ * plaintext password/PII for out-of-scope branches out of the client).
+ */
+export async function fetchNextEmployeeId(): Promise<string> {
+  const snapshot = await getDocs(collection(requireDb(db), COLLECTION))
+  const ids = snapshot.docs.map((d) => d.id)
+  return nextEmployeeIdFrom(ids)
 }
 
 export async function createEmployee(
