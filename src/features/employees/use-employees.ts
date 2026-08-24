@@ -9,12 +9,14 @@ import {
   type EmployeeUpdateValues,
 } from "@/lib/firestore/employees"
 import { useAuth } from "@/hooks/use-auth"
-import { canManageEmployees, scopeByBranch } from "@/lib/permissions"
+import { canEmployeeAction, scopeByBranch } from "@/lib/permissions"
 import type { Employee, EmployeeWritePayload } from "@/types/employee"
 
 export function useEmployees() {
-  const { role, managedBranches } = useAuth()
-  const canManage = canManageEmployees(role)
+  const { role, managedBranches, permissions } = useAuth()
+  const canAdd = canEmployeeAction(role, permissions, "add")
+  const canEdit = canEmployeeAction(role, permissions, "edit")
+  const canDelete = canEmployeeAction(role, permissions, "delete")
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -46,12 +48,12 @@ export function useEmployees() {
   }, [managedBranches])
 
   async function addEmployee(payload: EmployeeWritePayload) {
-    if (!canManage) {
-      toast.error("You don't have permission to modify employees.")
+    if (!canAdd) {
+      toast.error("You don't have permission to add employees.")
       return false
     }
     try {
-      await createEmployee(payload)
+      await createEmployee(payload, managedBranches)
       toast.success("Employee created.")
       return true
     } catch (err) {
@@ -61,12 +63,12 @@ export function useEmployees() {
   }
 
   async function editEmployee(id: string, values: EmployeeUpdateValues) {
-    if (!canManage) {
-      toast.error("You don't have permission to modify employees.")
+    if (!canEdit) {
+      toast.error("You don't have permission to edit employees.")
       return false
     }
     try {
-      await updateEmployee(id, values)
+      await updateEmployee(id, values, managedBranches)
       toast.success("Employee updated.")
       return true
     } catch (err) {
@@ -76,12 +78,12 @@ export function useEmployees() {
   }
 
   async function removeEmployee(id: string) {
-    if (!canManage) {
-      toast.error("You don't have permission to modify employees.")
+    if (!canDelete) {
+      toast.error("You don't have permission to delete employees.")
       return false
     }
     try {
-      const { attendanceDeleted } = await deleteEmployee(id)
+      const { attendanceDeleted } = await deleteEmployee(id, managedBranches)
       toast.success(
         attendanceDeleted === 0
           ? "Employee deleted."
@@ -96,5 +98,15 @@ export function useEmployees() {
     }
   }
 
-  return { employees, isLoading, error, canManage, addEmployee, editEmployee, removeEmployee }
+  return {
+    employees,
+    isLoading,
+    error,
+    canAdd,
+    canEdit,
+    canDelete,
+    addEmployee,
+    editEmployee,
+    removeEmployee,
+  }
 }

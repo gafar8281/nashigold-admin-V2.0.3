@@ -19,8 +19,17 @@ import { db } from "@/lib/firebase"
 import { requireDb } from "@/lib/firestore/converters"
 import { deleteAttendanceForEmployee } from "@/lib/firestore/attendance"
 import { JOB_TITLES } from "@/lib/constants"
-import { MAX_BRANCH_IN_VALUES, scopeByBranch } from "@/lib/permissions"
+import { isBranchInScope, MAX_BRANCH_IN_VALUES, scopeByBranch } from "@/lib/permissions"
 import type { Employee, EmployeeWritePayload } from "@/types/employee"
+
+/** `null` = unrestricted (admin). Defence-in-depth mirroring
+ * reviewLeaveRequest's server-side re-check — the UI already hides these
+ * actions for out-of-scope branches, but this guards direct calls too. */
+function assertBranchAllowed(allowedBranches: string[] | null | undefined, branch: string) {
+  if (allowedBranches && !isBranchInScope(allowedBranches, branch)) {
+    throw new Error("You can only manage employees in your branches.")
+  }
+}
 
 const COLLECTION = "nashigold-employee-data"
 
@@ -104,8 +113,10 @@ export function suggestNextEmployeeId(employees: Employee[]): string {
 }
 
 export async function createEmployee(
-  payload: EmployeeWritePayload
+  payload: EmployeeWritePayload,
+  allowedBranches?: string[] | null
 ): Promise<void> {
+  assertBranchAllowed(allowedBranches, payload.branch)
   const ref = doc(requireDb(db), COLLECTION, payload.id)
   const existing = await getDoc(ref)
   if (existing.exists()) {
@@ -126,12 +137,19 @@ export interface EmployeeUpdateValues
 
 export async function updateEmployee(
   id: string,
-  values: EmployeeUpdateValues
+  values: EmployeeUpdateValues,
+  allowedBranches?: string[] | null
 ): Promise<void> {
+  const ref = doc(requireDb(db), COLLECTION, id)
+  if (allowedBranches) {
+    const existing = await getEmployee(id)
+    if (existing) assertBranchAllowed(allowedBranches, existing.branch)
+    if (values.branch !== undefined) assertBranchAllowed(allowedBranches, values.branch)
+  }
   const { password, ...rest } = values
   const update: Record<string, unknown> = { ...rest }
   if (password) update.password = password
-  await updateDoc(doc(requireDb(db), COLLECTION, id), update)
+  await updateDoc(ref, update)
 }
 
 /**
@@ -143,8 +161,13 @@ export async function updateEmployee(
  * which is the reuse bug this cascade exists to prevent.
  */
 export async function deleteEmployee(
-  id: string
+  id: string,
+  allowedBranches?: string[] | null
 ): Promise<{ attendanceDeleted: number }> {
+  if (allowedBranches) {
+    const existing = await getEmployee(id)
+    if (existing) assertBranchAllowed(allowedBranches, existing.branch)
+  }
   const attendanceDeleted = await deleteAttendanceForEmployee(id)
   await deleteDoc(doc(requireDb(db), COLLECTION, id))
   return { attendanceDeleted }

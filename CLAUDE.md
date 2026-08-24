@@ -13,10 +13,10 @@ This is a **rebuild** of an existing console. The goal is to preserve the featur
 
 ## Roles
 
-- **Admin** (`role: "admin"`) — full control over employees, branches, complaints, and announcements; read access to attendance, leave requests, and dashboard. Unrestricted across all branches.
-- **Branch Admin** (`role: "secondary_admin"`) — scoped to a `managedBranches: string[]` array on their `nashigold_users` document (e.g. `["D1","D2","D3"]`). Can view Dashboard, Employees (read-only), Attendance, and Leave Requests (can approve/reject) filtered to those branches. Branches, Complaints, and Announcements are hidden entirely — both the nav item and the route redirect to `/`. A user with this role but an empty/missing `managedBranches` is refused at login (fail closed).
+- **Admin** (`role: "admin"`) — full control over employees, branches, complaints, announcements, and secondary_admin user accounts (via the "Add Users" section); read access to attendance, leave requests, and dashboard. Unrestricted across all branches.
+- **Branch Admin** (`role: "secondary_admin"`) — scoped to a `managedBranches: string[]` array on their `nashigold_users` document (e.g. `["D1","D2","D3"]`), plus a nested `permissions` object created and edited by an admin through "Add Users" (`src/features/users`). Dashboard and Attendance are always read-only and scoped to `managedBranches` for every secondary_admin — not configurable. Employees and Announcements are always visible (read), with `add`/`edit`/`delete` gated per-user by `permissions.employees` / `permissions.announcements`. Leave Requests is hidden entirely unless `permissions.leaveRequests.enabled`, in which case it's scoped to `managedBranches` and approve/reject is available. Branches and Complaints are hidden entirely for every secondary_admin regardless of `permissions` — both the nav item and the route redirect to `/`; same for the "Add Users" section itself, which only `admin` can reach. A user with this role but an empty/missing `managedBranches` is refused at login (fail closed); a missing/malformed `permissions` object degrades to all-toggles-off (also fail closed) — see `normalizePermissions` in `src/lib/permissions.ts`.
 
-Role and branch scoping (`src/lib/permissions.ts`, `src/hooks/use-branch-scope.ts`) are enforced **client-side only**. This app has no per-user Firebase Auth identity — the only real Firebase Auth session is anonymous (see `ensureAnonymousSession` in `src/lib/firebase.ts`), used solely so `firestore.rules` can require `request.auth != null`. Credentials and role/branch data are read from a client-side query against `nashigold_users`. A determined client can bypass all of this. Real enforcement would require migrating to per-user Firebase Auth with custom claims and rewriting the rules around them — see the `TODO` on the `nashigold_users` rule.
+Role, branch, and permission scoping (`src/lib/permissions.ts`, `src/hooks/use-branch-scope.ts`) are enforced **client-side only**. This app has no per-user Firebase Auth identity — the only real Firebase Auth session is anonymous (see `ensureAnonymousSession` in `src/lib/firebase.ts`), used solely so `firestore.rules` can require `request.auth != null`. Credentials, role, branch, and permission data are read from a client-side query against `nashigold_users`. A determined client can bypass all of this — including the "Add Users" write path itself, since `firestore.rules` can only key off `request.resource.data.role`, not on who is actually making the request. Real enforcement would require migrating to per-user Firebase Auth with custom claims and rewriting the rules around them — see the `TODO`s on the `nashigold_users` rule.
 
 (The role model may grow further — don't hardcode assumptions that only these two roles will ever exist.)
 
@@ -64,6 +64,19 @@ One document per announcement.
 | `heading` | Title |
 | `date` | Publish date |
 | `content` | Body text |
+
+### `nashigold_users`
+One document per admin login. Read by `verifyUserCredentials`/`getUserById` at login and on session refresh; written only for `secondary_admin` docs, by `src/lib/firestore/users.ts` (create/update/delete) via the "Add Users" section.
+
+| Field | Notes |
+|---|---|
+| `email` | Lowercase/trimmed — matching against it is case-sensitive |
+| `password` | **Plaintext — known security issue, must be remediated** |
+| `role` | `admin` or `secondary_admin` |
+| `managedBranches` | `secondary_admin` only; non-empty array of branch codes, or login is refused |
+| `permissions` | `secondary_admin` only; nested per-module toggles — see `SecondaryAdminPermissions` in `src/types/permissions.ts` and `normalizePermissions` in `src/lib/permissions.ts` |
+
+`admin` documents have no `managedBranches`/`permissions` and are provisioned out-of-band (Firebase console) — never created, edited, or deleted from this console.
 
 ### `nashigold_branches`
 One document per branch. Document ID is the branch code itself (e.g. `H1`), so it doubles as the primary key referenced by `nashigold-employee-data.branch`.

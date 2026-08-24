@@ -28,6 +28,9 @@ export function AnnouncementsPage() {
     announcements,
     isLoading,
     error,
+    canAdd,
+    canEdit,
+    canDelete,
     addAnnouncement,
     editAnnouncement,
     removeAnnouncement,
@@ -52,14 +55,16 @@ export function AnnouncementsPage() {
         title="Announcements"
         description="Post broadcast notices for all staff."
         action={
-          <Button
-            onClick={() => {
-              setEditing(undefined)
-              setFormOpen(true)
-            }}
-          >
-            <PlusIcon /> New announcement
-          </Button>
+          canAdd ? (
+            <Button
+              onClick={() => {
+                setEditing(undefined)
+                setFormOpen(true)
+              }}
+            >
+              <PlusIcon /> New announcement
+            </Button>
+          ) : undefined
         }
       />
 
@@ -87,31 +92,37 @@ export function AnnouncementsPage() {
                     <CardTitle>{announcement.heading}</CardTitle>
                     <CardDescription>{formatCalendarDate(announcement.date)}</CardDescription>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <Button variant="ghost" size="icon-sm">
-                          <MoreHorizontalIcon />
-                        </Button>
-                      }
-                    />
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditing(announcement)
-                          setFormOpen(true)
-                        }}
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onClick={() => setDeleting(announcement)}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {(canEdit || canDelete) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="ghost" size="icon-sm">
+                            <MoreHorizontalIcon />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end">
+                        {canEdit && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setEditing(announcement)
+                              setFormOpen(true)
+                            }}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => setDeleting(announcement)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="whitespace-pre-wrap text-sm">
@@ -122,22 +133,26 @@ export function AnnouncementsPage() {
         </div>
       )}
 
-      <AnnouncementFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        announcement={editing}
-        onCreate={addAnnouncement}
-        onUpdate={editAnnouncement}
-      />
+      {(canAdd || canEdit) && (
+        <AnnouncementFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          announcement={editing}
+          onCreate={addAnnouncement}
+          onUpdate={editAnnouncement}
+        />
+      )}
 
-      <ConfirmDeleteDialog
-        open={!!deleting}
-        onOpenChange={(open) => !open && setDeleting(null)}
-        title="Delete announcement"
-        description={`This will permanently remove "${deleting?.heading ?? ""}".`}
-        onConfirm={handleConfirmDelete}
-        isConfirming={isDeleting}
-      />
+      {canDelete && (
+        <ConfirmDeleteDialog
+          open={!!deleting}
+          onOpenChange={(open) => !open && setDeleting(null)}
+          title="Delete announcement"
+          description={`This will permanently remove "${deleting?.heading ?? ""}".`}
+          onConfirm={handleConfirmDelete}
+          isConfirming={isDeleting}
+        />
+      )}
     </div>
   )
 }

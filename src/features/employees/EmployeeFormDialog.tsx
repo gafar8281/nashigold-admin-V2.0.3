@@ -8,6 +8,7 @@ import { suggestNextEmployeeId } from "@/lib/firestore/employees"
 import type { EmployeeUpdateValues } from "@/lib/firestore/employees"
 import type { Employee, EmployeeWritePayload } from "@/types/employee"
 import { useBranches } from "@/hooks/use-branches"
+import { useBranchScope } from "@/hooks/use-branch-scope"
 import {
   employeeSchema,
   type EmployeeFormInput,
@@ -76,7 +77,12 @@ export function EmployeeFormDialog({
   onUpdate,
 }: EmployeeFormDialogProps) {
   const isEdit = !!employee
-  const { branches, isLoading: branchesLoading } = useBranches()
+  // Scoped to the current user's managedBranches so a branch admin editing
+  // an employee can't move them into (or leave them assigned to) a branch
+  // outside their own scope. useBranches() supplies isLoading — same
+  // context, no extra Firestore read.
+  const { isLoading: branchesLoading } = useBranches()
+  const { branches } = useBranchScope()
 
   const {
     register,

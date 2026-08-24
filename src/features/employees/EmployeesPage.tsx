@@ -22,8 +22,17 @@ import {
 } from "@/components/ui/table"
 
 export function EmployeesPage() {
-  const { employees, isLoading, error, canManage, addEmployee, editEmployee, removeEmployee } =
-    useEmployees()
+  const {
+    employees,
+    isLoading,
+    error,
+    canAdd,
+    canEdit,
+    canDelete,
+    addEmployee,
+    editEmployee,
+    removeEmployee,
+  } = useEmployees()
 
   const [search, setSearch] = useState("")
   const [branchFilter, setBranchFilter] = useState<string>(ALL_BRANCHES)
@@ -54,9 +63,10 @@ export function EmployeesPage() {
           setFormOpen(true)
         },
         onDelete: (employee) => setDeletingEmployee(employee),
-        canManage,
+        canEdit,
+        canDelete,
       }),
-    [canManage]
+    [canEdit, canDelete]
   )
 
   const table = useReactTable({
@@ -78,12 +88,12 @@ export function EmployeesPage() {
       <PageHeader
         title="Employees"
         description={
-          canManage
+          canAdd || canEdit || canDelete
             ? "Manage staff roster, branches, and sales targets."
             : "Staff roster for your branches. Read-only."
         }
         action={
-          canManage ? (
+          canAdd ? (
             <Button
               onClick={() => {
                 setEditingEmployee(undefined)
@@ -160,26 +170,26 @@ export function EmployeesPage() {
         </div>
       )}
 
-      {canManage && (
-        <>
-          <EmployeeFormDialog
-            open={formOpen}
-            onOpenChange={setFormOpen}
-            employee={editingEmployee}
-            existingEmployees={employees}
-            onCreate={addEmployee}
-            onUpdate={editEmployee}
-          />
+      {(canAdd || canEdit) && (
+        <EmployeeFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          employee={editingEmployee}
+          existingEmployees={employees}
+          onCreate={addEmployee}
+          onUpdate={editEmployee}
+        />
+      )}
 
-          <ConfirmDeleteDialog
-            open={!!deletingEmployee}
-            onOpenChange={(open) => !open && setDeletingEmployee(null)}
-            title="Delete employee"
-            description={`This will permanently remove ${deletingEmployee?.name ?? "this employee"} from the roster and delete their entire attendance history. This cannot be undone.`}
-            onConfirm={handleConfirmDelete}
-            isConfirming={isDeleting}
-          />
-        </>
+      {canDelete && (
+        <ConfirmDeleteDialog
+          open={!!deletingEmployee}
+          onOpenChange={(open) => !open && setDeletingEmployee(null)}
+          title="Delete employee"
+          description={`This will permanently remove ${deletingEmployee?.name ?? "this employee"} from the roster and delete their entire attendance history. This cannot be undone.`}
+          onConfirm={handleConfirmDelete}
+          isConfirming={isDeleting}
+        />
       )}
     </div>
   )

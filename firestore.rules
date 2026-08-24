@@ -48,25 +48,44 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Provisioned out-of-band (Firebase console / manual seed) — this
-    // console only ever reads this collection to validate login.
+    // admin accounts are provisioned out-of-band (Firebase console / manual
+    // seed) — this console only ever reads those to validate login.
+    // secondary_admin accounts are created/edited/deleted from the "Add
+    // Users" section (src/features/users), so writes are opened for that
+    // role only, below.
     //
     // TODO(security gap, not coordination): documents here may carry
-    // role: "admin" | "secondary_admin" and, for secondary_admin,
-    // managedBranches: string[]. That role/branch scoping is enforced
-    // ONLY client-side (see src/lib/permissions.ts) — there is no way to
-    // check it here, because the only Firebase Auth identity this app
-    // creates is an anonymous one (see ensureAnonymousSession in
-    // src/lib/firebase.ts), so `request.auth` carries no role or branch
-    // claims to key a rule on. Real enforcement requires migrating to
-    // per-user Firebase Auth with custom claims for role/managedBranches,
-    // then rewriting every rule below to check them. Note that even then,
-    // `attendance` (below) could not be branch-scoped without the
-    // employee-facing app first denormalizing a `branch` field onto its
-    // records — today it only carries `employeeId`.
+    // role: "admin" | "secondary_admin", managedBranches: string[], and
+    // (for secondary_admin) a nested permissions object. That role/branch/
+    // permission scoping is enforced ONLY client-side (see
+    // src/lib/permissions.ts) — there is no way to check it here, because
+    // the only Firebase Auth identity this app creates is an anonymous one
+    // (see ensureAnonymousSession in src/lib/firebase.ts), so
+    // `request.auth` carries no role or branch claims to key a rule on.
+    // Real enforcement requires migrating to per-user Firebase Auth with
+    // custom claims for role/managedBranches/permissions, then rewriting
+    // every rule below to check them. Note that even then, `attendance`
+    // (below) could not be branch-scoped without the employee-facing app
+    // first denormalizing a `branch` field onto its records — today it
+    // only carries `employeeId`.
+    //
+    // TODO(security gap, introduced by Add Users): opening create/update/
+    // delete below to any anonymous session (the only identity this app
+    // has) means anyone holding the public Firebase config can create or
+    // delete secondary_admin accounts directly against Firestore, not just
+    // through this console's UI. That is strictly worse than the previous
+    // `allow write: if false`, and is the price of a client-side Add Users
+    // section with no per-user Firebase Auth — admin documents remain
+    // untouchable by any client, which bounds the damage to secondary_admin
+    // accounts only. The real fix is the custom-claims migration above.
     match /nashigold_users/{userId} {
       allow read: if request.auth != null;
-      allow write: if false;
+
+      allow create, update: if request.auth != null
+        && request.resource.data.role == 'secondary_admin';
+
+      allow delete: if request.auth != null
+        && resource.data.role == 'secondary_admin';
     }
 
     // This console is READ-ONLY against attendance — it is owned by a

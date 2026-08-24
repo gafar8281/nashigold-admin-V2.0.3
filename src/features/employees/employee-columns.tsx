@@ -15,7 +15,8 @@ import {
 export function buildEmployeeColumns(options: {
   onEdit: (employee: Employee) => void
   onDelete: (employee: Employee) => void
-  canManage: boolean
+  canEdit: boolean
+  canDelete: boolean
 }): ColumnDef<Employee>[] {
   const columns: ColumnDef<Employee>[] = [
     {
@@ -61,7 +62,7 @@ export function buildEmployeeColumns(options: {
     },
   ]
 
-  if (!options.canManage) return columns
+  if (!options.canEdit && !options.canDelete) return columns
 
   columns.push({
     id: "actions",
@@ -76,15 +77,19 @@ export function buildEmployeeColumns(options: {
           }
         />
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => options.onEdit(row.original)}>
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => options.onDelete(row.original)}
-          >
-            Delete
-          </DropdownMenuItem>
+          {options.canEdit && (
+            <DropdownMenuItem onClick={() => options.onEdit(row.original)}>
+              Edit
+            </DropdownMenuItem>
+          )}
+          {options.canDelete && (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => options.onDelete(row.original)}
+            >
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     ),

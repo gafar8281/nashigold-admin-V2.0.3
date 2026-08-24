@@ -7,9 +7,16 @@ import {
   listAnnouncements,
   updateAnnouncement,
 } from "@/lib/firestore/announcements"
+import { useAuth } from "@/hooks/use-auth"
+import { canAnnouncementAction } from "@/lib/permissions"
 import type { Announcement } from "@/types/announcement"
 
 export function useAnnouncements() {
+  const { role, permissions } = useAuth()
+  const canAdd = canAnnouncementAction(role, permissions, "add")
+  const canEdit = canAnnouncementAction(role, permissions, "edit")
+  const canDelete = canAnnouncementAction(role, permissions, "delete")
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +38,10 @@ export function useAnnouncements() {
   }, [])
 
   async function addAnnouncement(values: Omit<Announcement, "id">) {
+    if (!canAdd) {
+      toast.error("You don't have permission to post announcements.")
+      return false
+    }
     try {
       await createAnnouncement(values)
       toast.success("Announcement posted.")
@@ -43,6 +54,10 @@ export function useAnnouncements() {
   }
 
   async function editAnnouncement(id: string, values: Partial<Omit<Announcement, "id">>) {
+    if (!canEdit) {
+      toast.error("You don't have permission to edit announcements.")
+      return false
+    }
     try {
       await updateAnnouncement(id, values)
       toast.success("Announcement updated.")
@@ -55,6 +70,10 @@ export function useAnnouncements() {
   }
 
   async function removeAnnouncement(id: string) {
+    if (!canDelete) {
+      toast.error("You don't have permission to delete announcements.")
+      return false
+    }
     try {
       await deleteAnnouncement(id)
       toast.success("Announcement deleted.")
@@ -70,6 +89,9 @@ export function useAnnouncements() {
     announcements,
     isLoading,
     error,
+    canAdd,
+    canEdit,
+    canDelete,
     addAnnouncement,
     editAnnouncement,
     removeAnnouncement,

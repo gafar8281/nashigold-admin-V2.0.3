@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom"
 import {
   LayoutDashboardIcon,
   UsersIcon,
+  UserPlusIcon,
   Building2Icon,
   CalendarCheckIcon,
   CalendarDaysIcon,
@@ -45,15 +46,16 @@ const NAV_ITEMS: Array<{ section: AppSection; to: string; label: string; icon: L
   { section: "leave-requests", to: "/leave-requests", label: "Leave Requests", icon: CalendarDaysIcon },
   { section: "complaints", to: "/complaints", label: "Complaints", icon: MessageSquareWarningIcon },
   { section: "announcements", to: "/announcements", label: "Announcements", icon: MegaphoneIcon },
+  { section: "users", to: "/users", label: "Add Users", icon: UserPlusIcon },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { email, role, logout } = useAuth()
+  const { email, role, permissions, logout } = useAuth()
   const location = useLocation()
 
   const navItems = useMemo(
-    () => NAV_ITEMS.filter((item) => canAccessSection(role, item.section)),
-    [role]
+    () => NAV_ITEMS.filter((item) => canAccessSection(role, item.section, permissions)),
+    [role, permissions]
   )
 
   return (

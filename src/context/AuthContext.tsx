@@ -1,17 +1,22 @@
 import { useEffect, useState, type ReactNode } from "react"
 
 import { ensureAnonymousSession } from "@/lib/firebase"
-import { verifyUserCredentials } from "@/lib/firestore/users"
+import { getUserById, verifyUserCredentials } from "@/lib/firestore/users"
 import { AuthContext, type AuthContextValue } from "@/context/auth-context-value"
+import { normalizePermissions } from "@/lib/permissions"
 import { ROLES, type Role } from "@/lib/constants"
 import type { AdminUser } from "@/types/user"
+import type { SecondaryAdminPermissions } from "@/types/permissions"
 
 const SESSION_KEY = "nashigold-admin-session"
 
 interface Session {
+  /** Absent on sessions written before this field existed — see readSession. */
+  id?: string
   email: string
   role: Role
   managedBranches: string[] | null
+  permissions: SecondaryAdminPermissions | null
 }
 
 function readSession(): Session | null {
@@ -22,12 +27,14 @@ function readSession(): Session | null {
     if (typeof parsed?.email !== "string") return null
     if (!ROLES.includes(parsed.role)) return null
 
+    const id = typeof parsed.id === "string" ? parsed.id : undefined
+
     // Sessions written before secondary_admin existed are { email,
     // role: "admin" } with no managedBranches. Admin is unrestricted
     // regardless of what's stored, so these stay valid — no forced logout
     // for existing admins.
     if (parsed.role === "admin") {
-      return { email: parsed.email, role: "admin", managedBranches: null }
+      return { id, email: parsed.email, role: "admin", managedBranches: null, permissions: null }
     }
 
     const branches = Array.isArray(parsed.managedBranches)
@@ -37,7 +44,13 @@ function readSession(): Session | null {
       : []
     // Fail closed: a scoped session with no scope is unusable and dangerous.
     if (branches.length === 0) return null
-    return { email: parsed.email, role: "secondary_admin", managedBranches: branches }
+    return {
+      id,
+      email: parsed.email,
+      role: "secondary_admin",
+      managedBranches: branches,
+      permissions: normalizePermissions(parsed.permissions),
+    }
   } catch {
     return null
   }
@@ -55,10 +68,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    void ensureAnonymousSession()
-    const existing = readSession()
-    if (existing) setSession(existing)
-    setIsReady(true)
+    let cancelled = false
+
+    async function init() {
+      await ensureAnonymousSession()
+      const existing = readSession()
+      if (!existing) {
+        if (!cancelled) setIsReady(true)
+        return
+      }
+      if (!cancelled) setSession(existing)
+
+      // Revoking a toggle/branch/role should reach an already-signed-in
+      // secondary_admin without waiting for them to log out again — so
+      // re-fetch the live document and reconcile before declaring ready.
+      // Sessions predating this field have no id and can't be refreshed;
+      // force a clean re-login for those instead of guessing.
+      if (existing.role === "secondary_admin" && !existing.id) {
+        localStorage.removeItem(SESSION_KEY)
+        if (!cancelled) {
+          setSession(null)
+          setIsReady(true)
+        }
+        return
+      }
+
+      if (existing.id) {
+        try {
+          const fresh = await getUserById(existing.id)
+          if (cancelled) return
+          if (!fresh) {
+            localStorage.removeItem(SESSION_KEY)
+            setSession(null)
+          } else {
+            const nextSession: Session = {
+              id: fresh.id,
+              email: fresh.email,
+              role: fresh.role,
+              managedBranches: fresh.managedBranches,
+              permissions: fresh.permissions,
+            }
+            localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession))
+            setSession(nextSession)
+          }
+        } catch (error) {
+          // Firestore unreachable — don't lock the admin out over a
+          // transient network error, just keep the cached session.
+          console.warn("Failed to refresh session against Firestore:", error)
+        }
+      }
+
+      if (!cancelled) setIsReady(true)
+    }
+
+    void init()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function login(emailInput: string, password: string) {
@@ -79,9 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const nextSession: Session = {
+      id: user.id,
       email: user.email,
       role: user.role,
       managedBranches: user.managedBranches,
+      permissions: user.permissions,
     }
     localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession))
     setSession(nextSession)
@@ -98,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: session?.email ?? null,
     role: session?.role ?? null,
     managedBranches: session?.managedBranches ?? null,
+    permissions: session?.permissions ?? null,
     isReady,
     login,
     logout,

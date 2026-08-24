@@ -15,7 +15,7 @@ export function SectionGate({
   section: AppSection
   children: ReactNode
 }) {
-  const { role } = useAuth()
-  if (!canAccessSection(role, section)) return <Navigate to="/" replace />
+  const { role, permissions } = useAuth()
+  if (!canAccessSection(role, section, permissions)) return <Navigate to="/" replace />
   return <>{children}</>
 }
