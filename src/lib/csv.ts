@@ -22,7 +22,7 @@ export function toCsvContent(rows: (string | number)[][]): string {
  * The leading BOM is what makes Excel render Arabic names correctly.
  */
 export function downloadCsv(filename: string, content: string): void {
-  const blob = new Blob([`﻿${content}`], { type: "text/csv;charset=utf-8" })
+  const blob = new Blob([`\uFEFF${content}`], { type: "text/csv;charset=utf-8" })
   const url = URL.createObjectURL(blob)
   try {
     const link = document.createElement("a")

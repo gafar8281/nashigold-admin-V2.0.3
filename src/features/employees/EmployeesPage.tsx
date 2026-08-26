@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react"
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
-import { PlusIcon } from "lucide-react"
+import { DownloadIcon, PlusIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { useEmployees } from "@/features/employees/use-employees"
 import { buildEmployeeColumns } from "@/features/employees/employee-columns"
 import { EmployeeFormDialog } from "@/features/employees/EmployeeFormDialog"
+import {
+  buildEmployeeCsvRows,
+  employeeCsvFilename,
+} from "@/features/employees/employee-csv"
 import type { Employee } from "@/types/employee"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { BranchFilterSelect, ALL_BRANCHES } from "@/components/shared/BranchFilterSelect"
@@ -20,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { downloadCsv, toCsvContent } from "@/lib/csv"
 
 export function EmployeesPage() {
   const {
@@ -75,6 +81,14 @@ export function EmployeesPage() {
     getCoreRowModel: getCoreRowModel(),
   })
 
+  function handleExport() {
+    try {
+      downloadCsv(employeeCsvFilename(), toCsvContent(buildEmployeeCsvRows(filteredEmployees)))
+    } catch {
+      toast.error("Failed to export employees.")
+    }
+  }
+
   async function handleConfirmDelete() {
     if (!deletingEmployee) return
     setIsDeleting(true)
@@ -93,16 +107,25 @@ export function EmployeesPage() {
             : "Staff roster for your branches. Read-only."
         }
         action={
-          canAdd ? (
+          <div className="flex items-center gap-2">
             <Button
-              onClick={() => {
-                setEditingEmployee(undefined)
-                setFormOpen(true)
-              }}
+              variant="outline"
+              onClick={handleExport}
+              disabled={isLoading || filteredEmployees.length === 0}
             >
-              <PlusIcon /> Add employee
+              <DownloadIcon /> Export CSV
             </Button>
-          ) : undefined
+            {canAdd && (
+              <Button
+                onClick={() => {
+                  setEditingEmployee(undefined)
+                  setFormOpen(true)
+                }}
+              >
+                <PlusIcon /> Add employee
+              </Button>
+            )}
+          </div>
         }
       />
 
