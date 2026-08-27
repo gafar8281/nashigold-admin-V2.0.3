@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react"
 import { flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table"
-import { DownloadIcon, PlusIcon } from "lucide-react"
+import { DownloadIcon, PlusIcon, UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { useEmployees } from "@/features/employees/use-employees"
 import { buildEmployeeColumns } from "@/features/employees/employee-columns"
 import { EmployeeFormDialog } from "@/features/employees/EmployeeFormDialog"
+import { ImportEmployeesDialog } from "@/features/employees/ImportEmployeesDialog"
 import {
   buildEmployeeCsvRows,
   employeeCsvFilename,
@@ -38,6 +39,7 @@ export function EmployeesPage() {
     addEmployee,
     editEmployee,
     removeEmployee,
+    importEmployeeTargets,
   } = useEmployees()
 
   const [search, setSearch] = useState("")
@@ -47,6 +49,7 @@ export function EmployeesPage() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | undefined>()
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const filteredEmployees = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -115,6 +118,15 @@ export function EmployeesPage() {
             >
               <DownloadIcon /> Export CSV
             </Button>
+            {canEdit && (
+              <Button
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+                disabled={isLoading}
+              >
+                <UploadIcon /> Import CSV
+              </Button>
+            )}
             {canAdd && (
               <Button
                 onClick={() => {
@@ -200,6 +212,15 @@ export function EmployeesPage() {
           employee={editingEmployee}
           onCreate={addEmployee}
           onUpdate={editEmployee}
+        />
+      )}
+
+      {canEdit && (
+        <ImportEmployeesDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          employees={employees}
+          onImport={importEmployeeTargets}
         />
       )}
 

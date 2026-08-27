@@ -10,6 +10,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
   type DocumentData,
   type QueryDocumentSnapshot,
   type Unsubscribe,
@@ -18,7 +19,7 @@ import {
 import { db } from "@/lib/firebase"
 import { requireDb } from "@/lib/firestore/converters"
 import { deleteAttendanceForEmployee } from "@/lib/firestore/attendance"
-import { JOB_TITLES } from "@/lib/constants"
+import { JOB_TITLES, type TargetUnit } from "@/lib/constants"
 import { isBranchInScope, MAX_BRANCH_IN_VALUES, scopeByBranch } from "@/lib/permissions"
 import type { Employee, EmployeeWritePayload } from "@/types/employee"
 
@@ -185,4 +186,57 @@ export async function deleteEmployee(
   const attendanceDeleted = await deleteAttendanceForEmployee(id)
   await deleteDoc(doc(requireDb(db), COLLECTION, id))
   return { attendanceDeleted }
+}
+
+export interface EmployeeTargetUpdate {
+  id: string
+  /** The employee's STORED branch (not the CSV cell) — used for the scope re-check. */
+  branch: string
+  monthly_target: number
+  target_unit: TargetUnit
+  target_achieved: number
+}
+
+/** Firestore caps a single writeBatch at 500 operations. */
+const BATCH_CHUNK_SIZE = 450
+
+/**
+ * Bulk-applies CSV-imported target updates. Only used by the Import CSV
+ * flow — every other write path here is one document at a time, but a
+ * roster-wide import needs writeBatch to avoid hundreds of round-trips.
+ * Writes only the three target fields; name/job_title/branch are untouched.
+ */
+export async function bulkUpdateEmployeeTargets(
+  updates: EmployeeTargetUpdate[],
+  allowedBranches?: string[] | null
+): Promise<{ updated: number; failedIds: string[] }> {
+  if (allowedBranches) {
+    for (const update of updates) {
+      assertBranchAllowed(allowedBranches, update.branch)
+    }
+  }
+
+  const database = requireDb(db)
+  const failedIds: string[] = []
+  let updated = 0
+
+  for (let start = 0; start < updates.length; start += BATCH_CHUNK_SIZE) {
+    const chunk = updates.slice(start, start + BATCH_CHUNK_SIZE)
+    const batch = writeBatch(database)
+    for (const update of chunk) {
+      batch.update(doc(database, COLLECTION, update.id), {
+        monthly_target: update.monthly_target,
+        target_unit: update.target_unit,
+        target_achieved: update.target_achieved,
+      })
+    }
+    try {
+      await batch.commit()
+      updated += chunk.length
+    } catch {
+      failedIds.push(...chunk.map((u) => u.id))
+    }
+  }
+
+  return { updated, failedIds }
 }

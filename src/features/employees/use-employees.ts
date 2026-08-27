@@ -2,10 +2,12 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
 import {
+  bulkUpdateEmployeeTargets,
   createEmployee,
   deleteEmployee,
   subscribeEmployees,
   updateEmployee,
+  type EmployeeTargetUpdate,
   type EmployeeUpdateValues,
 } from "@/lib/firestore/employees"
 import { useAuth } from "@/hooks/use-auth"
@@ -98,6 +100,19 @@ export function useEmployees() {
     }
   }
 
+  async function importEmployeeTargets(updates: EmployeeTargetUpdate[]) {
+    if (!canEdit) {
+      toast.error("You don't have permission to edit employees.")
+      return null
+    }
+    try {
+      return await bulkUpdateEmployeeTargets(updates, managedBranches)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to import employees.")
+      return null
+    }
+  }
+
   return {
     employees,
     isLoading,
@@ -108,5 +123,6 @@ export function useEmployees() {
     addEmployee,
     editEmployee,
     removeEmployee,
+    importEmployeeTargets,
   }
 }
