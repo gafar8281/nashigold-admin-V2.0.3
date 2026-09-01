@@ -36,3 +36,12 @@ export function formatProgressPercent(achieved: number, target: number): number 
   if (target <= 0) return 0
   return Math.min(100, Math.round((achieved / target) * 100))
 }
+
+// Uncapped, unlike formatProgressPercent(), which clamps to 100 because it
+// drives a progress-bar width — a branch that beats its target should read as
+// such. Returns "—" when there's no target to divide by; toChartData() keeps
+// branches with target 0 but achieved > 0, and "0%" would misread as "sold nothing".
+export function formatAchievedPercent(achieved: number, target: number): string {
+  if (!Number.isFinite(target) || target <= 0) return "—"
+  return `${Math.round((achieved / target) * 100)}%`
+}

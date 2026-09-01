@@ -1,12 +1,12 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent"
+import type { NameType, Payload, ValueType } from "recharts/types/component/DefaultTooltipContent"
 
 import { useDashboardData } from "@/features/dashboard/use-dashboard-data"
 import { computeBranchPerformance, toChartData } from "@/features/dashboard/branch-performance"
 import { useBranchScope } from "@/hooks/use-branch-scope"
 import { formatCalendarDate } from "@/lib/datetime"
-import { formatTargetAxisValue, formatTargetValue } from "@/lib/format"
+import { formatAchievedPercent, formatTargetAxisValue, formatTargetValue } from "@/lib/format"
 import { TARGET_UNITS, type TargetUnit } from "@/lib/constants"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -138,15 +138,26 @@ export function DashboardPage() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value: ValueType | undefined, name: NameType | undefined) => (
-                        <div className="flex w-full items-center justify-between gap-4">
-                          <span className="text-muted-foreground">
-                            {chartConfig[name as keyof typeof chartConfig]?.label ?? name}
-                          </span>
-                          <span className="font-mono font-medium text-foreground tabular-nums">
-                            {formatTargetValue(Number(value), unit)}
-                          </span>
-                        </div>
+                      formatter={(
+                        value: ValueType | undefined,
+                        name: NameType | undefined,
+                        item: Payload<ValueType, NameType>
+                      ) => (
+                        <>
+                          <TooltipRow
+                            label={chartConfig[name as keyof typeof chartConfig]?.label ?? name}
+                            value={formatTargetValue(Number(value), unit)}
+                          />
+                          {name === "achieved" && (
+                            <TooltipRow
+                              label="Achieved %"
+                              value={formatAchievedPercent(
+                                Number(value),
+                                Number(item.payload?.target)
+                              )}
+                            />
+                          )}
+                        </>
                       )}
                     />
                   }
@@ -191,6 +202,15 @@ export function DashboardPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function TooltipRow({ label, value }: { label: ReactNode; value: string }) {
+  return (
+    <div className="flex w-full items-center justify-between gap-4">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono font-medium text-foreground tabular-nums">{value}</span>
     </div>
   )
 }
