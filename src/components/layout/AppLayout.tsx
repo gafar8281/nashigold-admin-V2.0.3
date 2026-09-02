@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
   LayoutDashboardIcon,
@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   MegaphoneIcon,
   MessageSquareWarningIcon,
+  MonitorSmartphoneIcon,
   LogOutIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -16,6 +17,8 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { canAccessSection, type AppSection } from "@/lib/permissions"
 import { ROLE_LABELS } from "@/lib/constants"
+import { ResetSessionDialog } from "@/features/session/ResetSessionDialog"
+import { useResetSession } from "@/features/session/use-reset-session"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -52,6 +55,8 @@ const NAV_ITEMS: Array<{ section: AppSection; to: string; label: string; icon: L
 export function AppLayout({ children }: { children: ReactNode }) {
   const { email, role, permissions, logout } = useAuth()
   const location = useLocation()
+  const { resetSession } = useResetSession()
+  const [resetSessionOpen, setResetSessionOpen] = useState(false)
 
   const navItems = useMemo(
     () => NAV_ITEMS.filter((item) => canAccessSection(role, item.section, permissions)),
@@ -118,6 +123,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   }
                 />
                 <DropdownMenuContent align="start" side="top">
+                  {role === "admin" && (
+                    <DropdownMenuItem onClick={() => setResetSessionOpen(true)}>
+                      <MonitorSmartphoneIcon />
+                      Reset Emp Session
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={logout}>
                     <LogOutIcon />
                     Log out
@@ -128,6 +139,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </SidebarMenu>
         </SidebarFooter>
       </Sidebar>
+      <ResetSessionDialog
+        open={resetSessionOpen}
+        onOpenChange={setResetSessionOpen}
+        onReset={resetSession}
+      />
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger />

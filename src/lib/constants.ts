@@ -12,7 +12,7 @@ export const ALL_BRANCHES = "all"
 export const TARGET_UNITS = ["SAR", "Grams"] as const
 export type TargetUnit = (typeof TARGET_UNITS)[number]
 
-export const JOB_TITLES = ["Branch Manager", "Salesman"] as const
+export const JOB_TITLES = ["Branch Manager", "Salesman", "Employee"] as const
 export type JobTitle = (typeof JOB_TITLES)[number]
 
 export const ATTENDANCE_STATUSES = ["Present", "Absent", "Late", "In progress"] as const

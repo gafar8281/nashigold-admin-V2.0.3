@@ -101,6 +101,23 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Owned by the separate employee-facing app; this console only clears
+    // active_device_session so a locked-out employee can sign in elsewhere.
+    match /user_session_data/{employeeId} {
+      allow read: if request.auth != null;
+
+      // Admin session-reset path only — that one field, nothing else.
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['active_device_session']);
+
+      // TODO(coordinate before deploying): the employee app's auth model is
+      // unknown and it writes this collection on every sign-in. Leave create
+      // permissive until confirmed, then tighten — do not guess.
+      allow create: if true;
+      allow delete: if false;
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;

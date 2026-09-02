@@ -87,6 +87,13 @@ One document per branch. Document ID is the branch code itself (e.g. `H1`), so i
 | `address` | Street address; may be empty |
 | `createdDate` | Server timestamp set on creation |
 
+### `user_session_data`
+One document per employee, document ID is the employee's `id`. Owned by the separate employee-facing app, which uses it to pin each account to a single device. This console's only sanctioned write is clearing `active_device_session` (via the sidebar's "Reset Emp Session" action) so a locked-out employee can sign in on a new device — see Working Conventions.
+
+| Field | Notes |
+|---|---|
+| `active_device_session` | Opaque device/session identifier set by the employee app; this console only ever clears it (writes `""`), never sets it |
+
 ## Known Issues to Address in the Rebuild
 
 - **No authentication** — the console currently has no login/auth layer at all.
@@ -97,6 +104,7 @@ One document per branch. Document ID is the branch code itself (e.g. `H1`), so i
 ## Working Conventions
 
 - **Attendance is effectively read-only.** Never add create or update paths to the `attendance` collection from this console — that data is owned by the employee-facing app. The single exception is `deleteAttendanceForEmployee()` in `src/lib/firestore/attendance.ts`, which cascades from employee deletion (and re-sweeps on employee creation) because employee ids are recycled and would otherwise hand a new hire the previous holder's history. Don't expose it as a standalone action or widen it beyond delete.
+- **`user_session_data` is owned by the employee-facing app.** The only sanctioned write from this console is clearing `active_device_session` (to `""`), via `resetEmployeeSession()` in `src/lib/firestore/sessions.ts`, admin-only, from the sidebar footer's "Reset Emp Session" action. Don't add any other read/write path against this collection.
 - **Sensitive fields** (`email`, `contact`, `password`/credentials) should be treated as PII — avoid logging them, exposing them in client-side error messages, or including them in analytics.
 - Branch codes are managed data, not a hardcoded list — validate `branch` against the `nashigold_branches` collection (via the `useBranches()` hook) rather than treating it as free text.
 - `target_unit` determines how `monthly_target`/`target_achieved` should be formatted and compared (currency vs. weight) — don't assume SAR everywhere.
