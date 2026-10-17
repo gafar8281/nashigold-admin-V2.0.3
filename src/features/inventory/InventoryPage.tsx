@@ -185,7 +185,7 @@ export function InventoryPage() {
           <div className="flex flex-col items-start gap-3 rounded-xl border p-6">
             <p className="text-sm text-muted-foreground">
               No inventory uploaded yet. Upload a .csv or .xlsx with DESCRIPTION and LOCATION
-              columns to get started.
+              columns (plus an optional fallback LOCATION) to get started.
             </p>
             {canUpload && (
               <Button variant="outline" onClick={() => setImportOpen(true)}>

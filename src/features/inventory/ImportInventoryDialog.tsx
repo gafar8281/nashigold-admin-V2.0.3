@@ -134,8 +134,8 @@ export function ImportInventoryDialog({
                 <>Selected: {fileName}</>
               ) : (
                 <>
-                  .csv or .xlsx with columns DESCRIPTION and LOCATION (branch code). Each
-                  row is one unit.
+                  .csv or .xlsx with columns DESCRIPTION and LOCATION (branch code), plus an
+                  optional second LOCATION used when the first is blank. Each row is one unit.
                 </>
               )}
             </FieldDescription>

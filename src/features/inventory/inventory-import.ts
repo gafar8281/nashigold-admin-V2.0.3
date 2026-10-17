@@ -50,6 +50,7 @@ export async function readInventoryFile(file: File): Promise<string[][]> {
  * Each data row is one unit. DESCRIPTION is grouped case-insensitively (the
  * first casing seen is kept for display); LOCATION must match a known
  * branch code case-insensitively and is stored under its canonical code.
+ * An optional second LOCATION column is used only when the first is blank.
  */
 export function parseInventoryImport(
   grid: string[][],
@@ -64,9 +65,11 @@ export function parseInventoryImport(
   }
 
   const columnIndex = new Map<string, number>()
+  const locationIndices: number[] = []
   grid[headerIndex].forEach((label, index) => {
     const key = normalizeCell(label).toUpperCase()
     if (key !== "" && !columnIndex.has(key)) columnIndex.set(key, index)
+    if (key === "LOCATION") locationIndices.push(index)
   })
   const missing = REQUIRED_COLUMNS.filter((column) => !columnIndex.has(column))
   if (missing.length > 0) {
@@ -74,7 +77,7 @@ export function parseInventoryImport(
   }
 
   const descriptionIndex = columnIndex.get("DESCRIPTION")!
-  const locationIndex = columnIndex.get("LOCATION")!
+  const [locationIndex, fallbackLocationIndex] = locationIndices
   const branchByKey = new Map(branchCodes.map((code) => [code.toLowerCase(), code]))
 
   const groups = new Map<string, InventoryItemInput>()
@@ -84,7 +87,11 @@ export function parseInventoryImport(
   for (let i = headerIndex + 1; i < grid.length; i++) {
     const row = grid[i]
     const description = normalizeCell(row[descriptionIndex] ?? "")
-    const location = normalizeCell(row[locationIndex] ?? "")
+    const primaryLocation = normalizeCell(row[locationIndex] ?? "")
+    const location =
+      primaryLocation !== "" || fallbackLocationIndex === undefined
+        ? primaryLocation
+        : normalizeCell(row[fallbackLocationIndex] ?? "")
     if (description === "" && location === "") continue
 
     const errors: string[] = []
