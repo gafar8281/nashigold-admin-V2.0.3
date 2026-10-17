@@ -10,6 +10,7 @@ import {
   MegaphoneIcon,
   MessageSquareWarningIcon,
   MonitorSmartphoneIcon,
+  PackageIcon,
   LogOutIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -45,6 +46,7 @@ const NAV_ITEMS: Array<{ section: AppSection; to: string; label: string; icon: L
   { section: "dashboard", to: "/", label: "Dashboard", icon: LayoutDashboardIcon },
   { section: "employees", to: "/employees", label: "Employees", icon: UsersIcon },
   { section: "branches", to: "/branches", label: "Branches", icon: Building2Icon },
+  { section: "inventory", to: "/inventory", label: "Inventory", icon: PackageIcon },
   { section: "attendance", to: "/attendance", label: "Attendance", icon: CalendarCheckIcon },
   { section: "leave-requests", to: "/leave-requests", label: "Leave Requests", icon: CalendarDaysIcon },
   { section: "complaints", to: "/complaints", label: "Complaints", icon: MessageSquareWarningIcon },

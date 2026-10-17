@@ -11,6 +11,7 @@ import { AnnouncementsPage } from "@/features/announcements/AnnouncementsPage"
 import { LeaveRequestsPage } from "@/features/leave-requests/LeaveRequestsPage"
 import { ComplaintsPage } from "@/features/complaints/ComplaintsPage"
 import { BranchesPage } from "@/features/branches/BranchesPage"
+import { InventoryPage } from "@/features/inventory/InventoryPage"
 import { UsersPage } from "@/features/users/UsersPage"
 
 function App() {
@@ -41,6 +42,14 @@ function App() {
           element={
             <SectionGate section="branches">
               <BranchesPage />
+            </SectionGate>
+          }
+        />
+        <Route
+          path="/inventory"
+          element={
+            <SectionGate section="inventory">
+              <InventoryPage />
             </SectionGate>
           }
         />

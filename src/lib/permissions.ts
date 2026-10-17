@@ -24,6 +24,7 @@ export const APP_SECTIONS = [
   "dashboard",
   "employees",
   "branches",
+  "inventory",
   "attendance",
   "leave-requests",
   "complaints",
@@ -97,6 +98,7 @@ export function canAccessSection(
     case "leave-requests":
       return permissions.leaveRequests.enabled
     case "branches":
+    case "inventory":
     case "complaints":
     case "users":
       return false

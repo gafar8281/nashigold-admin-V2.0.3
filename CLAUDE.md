@@ -9,12 +9,13 @@ This is a **rebuild** of an existing console. The goal is to preserve the featur
 - **Employees** — staff roster: name, branch, contact info, monthly sales target, and progress toward that target.
 - **Attendance** — daily check-in/check-out records. **Read-only** in this console; records are produced by a separate employee-facing app.
 - **Announcements** — short broadcast notices posted by admins.
+- **Inventory** — admin-only snapshot of gold item counts per branch, replaced wholesale by uploading a `.csv`/`.xlsx` of `DESCRIPTION`/`LOCATION` rows (one row per unit).
 - **Dashboard** — summary view of headcount, today's attendance, branch performance, and recent announcements.
 
 ## Roles
 
 - **Admin** (`role: "admin"`) — full control over employees, branches, complaints, announcements, and secondary_admin user accounts (via the "Add Users" section); read access to attendance, leave requests, and dashboard. Unrestricted across all branches.
-- **Branch Admin** (`role: "secondary_admin"`) — scoped to a `managedBranches: string[]` array on their `nashigold_users` document (e.g. `["D1","D2","D3"]`), plus a nested `permissions` object created and edited by an admin through "Add Users" (`src/features/users`). Dashboard and Attendance are always read-only and scoped to `managedBranches` for every secondary_admin — not configurable. Employees and Announcements are always visible (read), with `add`/`edit`/`delete` gated per-user by `permissions.employees` / `permissions.announcements`. Leave Requests is hidden entirely unless `permissions.leaveRequests.enabled`, in which case it's scoped to `managedBranches` and approve/reject is available. Branches and Complaints are hidden entirely for every secondary_admin regardless of `permissions` — both the nav item and the route redirect to `/`; same for the "Add Users" section itself, which only `admin` can reach. A user with this role but an empty/missing `managedBranches` is refused at login (fail closed); a missing/malformed `permissions` object degrades to all-toggles-off (also fail closed) — see `normalizePermissions` in `src/lib/permissions.ts`.
+- **Branch Admin** (`role: "secondary_admin"`) — scoped to a `managedBranches: string[]` array on their `nashigold_users` document (e.g. `["D1","D2","D3"]`), plus a nested `permissions` object created and edited by an admin through "Add Users" (`src/features/users`). Dashboard and Attendance are always read-only and scoped to `managedBranches` for every secondary_admin — not configurable. Employees and Announcements are always visible (read), with `add`/`edit`/`delete` gated per-user by `permissions.employees` / `permissions.announcements`. Leave Requests is hidden entirely unless `permissions.leaveRequests.enabled`, in which case it's scoped to `managedBranches` and approve/reject is available. Branches, Inventory, and Complaints are hidden entirely for every secondary_admin regardless of `permissions` — both the nav item and the route redirect to `/`; same for the "Add Users" section itself, which only `admin` can reach. A user with this role but an empty/missing `managedBranches` is refused at login (fail closed); a missing/malformed `permissions` object degrades to all-toggles-off (also fail closed) — see `normalizePermissions` in `src/lib/permissions.ts`.
 
 Role, branch, and permission scoping (`src/lib/permissions.ts`, `src/hooks/use-branch-scope.ts`) are enforced **client-side only**. This app has no per-user Firebase Auth identity — the only real Firebase Auth session is anonymous (see `ensureAnonymousSession` in `src/lib/firebase.ts`), used solely so `firestore.rules` can require `request.auth != null`. Credentials, role, branch, and permission data are read from a client-side query against `nashigold_users`. A determined client can bypass all of this — including the "Add Users" write path itself, since `firestore.rules` can only key off `request.resource.data.role`, not on who is actually making the request. Real enforcement would require migrating to per-user Firebase Auth with custom claims and rewriting the rules around them — see the `TODO`s on the `nashigold_users` rule.
 
@@ -86,6 +87,20 @@ One document per branch. Document ID is the branch code itself (e.g. `H1`), so i
 | `id` | Branch code, same value as the document ID |
 | `address` | Street address; may be empty |
 | `createdDate` | Server timestamp set on creation |
+
+### `inventory`
+One document per unique item in an uploaded snapshot. Written only by `replaceInventory()` in `src/lib/firestore/inventory.ts`.
+
+| Field | Notes |
+|---|---|
+| `description` | Item name; grouped case-insensitively on upload, first casing seen is kept |
+| `totalCount` | Sum of `branches` values |
+| `branches` | Map of branch code → unit count; codes are validated against `nashigold_branches` on upload |
+| `updatedAt` | Server timestamp |
+| `snapshotId` | Which upload this doc belongs to — only docs matching `inventory_meta/current.snapshotId` are live |
+
+### `inventory_meta`
+Single document `current`: `{ snapshotId, updatedAt, itemCount, unitCount }`. An upload writes the new item docs first, then flips this pointer in one write, then deletes docs from older snapshots (best-effort). A failed upload leaves orphaned docs that are never read and are swept by the next successful upload — always read items through `getInventorySnapshot()`, never by querying `inventory` directly.
 
 ### `user_session_data`
 One document per employee, document ID is the employee's `id`. Owned by the separate employee-facing app, which uses it to pin each account to a single device. This console's only sanctioned write is clearing `active_device_session` (via the sidebar's "Reset Emp Session" action) so a locked-out employee can sign in on a new device — see Working Conventions.
