@@ -18,11 +18,18 @@ export const INVENTORY_SECTIONS: InventorySection[] = [
     labelAr: "سبائك وليرات",
     keywords: ["bar", "coin", "ingot", "سبيك", "ليره", "جنيه"],
   },
+  { id: "muznat", label: "Muznat", labelAr: "مزنط", keywords: ["muznat", "مزنط", "مرتعش"] },
+  {
+    id: "bangle",
+    label: "Bangle",
+    labelAr: "معضد",
+    keywords: ["bangle", "معضد", "معاضد", "غوايش"],
+  },
   {
     id: "bracelet",
     label: "Bracelet",
     labelAr: "سوار",
-    keywords: ["bracelet", "bangle", "سوار", "اسوار", "غوايش"],
+    keywords: ["bracelet", "سوار", "اسوار"],
   },
   { id: "belt", label: "Belt", labelAr: "حزام", keywords: ["belt", "حزام"] },
   { id: "anklet", label: "Anklet", labelAr: "خلخال", keywords: ["anklet", "خلخال"] },
@@ -31,6 +38,7 @@ export const INVENTORY_SECTIONS: InventorySection[] = [
   { id: "earring", label: "Earring", labelAr: "حلق", keywords: ["earring", "حلق"] },
   { id: "ring", label: "Ring", labelAr: "خاتم", keywords: ["ring", "خاتم", "دبله"] },
   { id: "pendant", label: "Pendant", labelAr: "تعليقة", keywords: ["pendant", "تعليق", "دلايه"] },
+  { id: "hand", label: "Hand", labelAr: "كف", keywords: ["hand", "كف"] },
 ]
 
 export const OTHER_SECTION: InventorySection = {
