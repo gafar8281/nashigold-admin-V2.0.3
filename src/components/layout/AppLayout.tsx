@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 
 import { useAuth } from "@/hooks/use-auth"
-import { canAccessSection, type AppSection } from "@/lib/permissions"
+import { canAccessSection, SECTION_PATHS, type AppSection } from "@/lib/permissions"
 import { ROLE_LABELS } from "@/lib/constants"
 import { ResetSessionDialog } from "@/features/session/ResetSessionDialog"
 import { useResetSession } from "@/features/session/use-reset-session"
@@ -43,15 +43,15 @@ import {
 } from "@/components/ui/sidebar"
 
 const NAV_ITEMS: Array<{ section: AppSection; to: string; label: string; icon: LucideIcon }> = [
-  { section: "dashboard", to: "/", label: "Dashboard", icon: LayoutDashboardIcon },
-  { section: "employees", to: "/employees", label: "Employees", icon: UsersIcon },
-  { section: "branches", to: "/branches", label: "Branches", icon: Building2Icon },
-  { section: "inventory", to: "/inventory", label: "Inventory", icon: PackageIcon },
-  { section: "attendance", to: "/attendance", label: "Attendance", icon: CalendarCheckIcon },
-  { section: "leave-requests", to: "/leave-requests", label: "Leave Requests", icon: CalendarDaysIcon },
-  { section: "complaints", to: "/complaints", label: "Complaints", icon: MessageSquareWarningIcon },
-  { section: "announcements", to: "/announcements", label: "Announcements", icon: MegaphoneIcon },
-  { section: "users", to: "/users", label: "Add Users", icon: UserPlusIcon },
+  { section: "dashboard", to: SECTION_PATHS["dashboard"], label: "Dashboard", icon: LayoutDashboardIcon },
+  { section: "employees", to: SECTION_PATHS["employees"], label: "Employees", icon: UsersIcon },
+  { section: "branches", to: SECTION_PATHS["branches"], label: "Branches", icon: Building2Icon },
+  { section: "inventory", to: SECTION_PATHS["inventory"], label: "Inventory", icon: PackageIcon },
+  { section: "attendance", to: SECTION_PATHS["attendance"], label: "Attendance", icon: CalendarCheckIcon },
+  { section: "leave-requests", to: SECTION_PATHS["leave-requests"], label: "Leave Requests", icon: CalendarDaysIcon },
+  { section: "complaints", to: SECTION_PATHS["complaints"], label: "Complaints", icon: MessageSquareWarningIcon },
+  { section: "announcements", to: SECTION_PATHS["announcements"], label: "Announcements", icon: MegaphoneIcon },
+  { section: "users", to: SECTION_PATHS["users"], label: "Add Users", icon: UserPlusIcon },
 ]
 
 export function AppLayout({ children }: { children: ReactNode }) {

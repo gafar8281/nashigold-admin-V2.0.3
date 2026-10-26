@@ -2,7 +2,11 @@ import type { ReactNode } from "react"
 import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/hooks/use-auth"
-import { canAccessSection, type AppSection } from "@/lib/permissions"
+import {
+  canAccessSection,
+  firstAccessibleSectionPath,
+  type AppSection,
+} from "@/lib/permissions"
 
 /**
  * Only ever rendered inside ProtectedRoute, so isReady/isAuthenticated are
@@ -16,6 +20,8 @@ export function SectionGate({
   children: ReactNode
 }) {
   const { role, permissions } = useAuth()
-  if (!canAccessSection(role, section, permissions)) return <Navigate to="/" replace />
+  if (!canAccessSection(role, section, permissions)) {
+    return <Navigate to={firstAccessibleSectionPath(role, permissions) ?? "/login"} replace />
+  }
   return <>{children}</>
 }

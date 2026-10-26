@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { ensureAnonymousSession } from "@/lib/firebase"
 import { getUserById, verifyUserCredentials } from "@/lib/firestore/users"
 import { AuthContext, type AuthContextValue } from "@/context/auth-context-value"
-import { normalizePermissions } from "@/lib/permissions"
+import { hasAnyAccessibleSection, normalizePermissions } from "@/lib/permissions"
 import { ROLES, type Role } from "@/lib/constants"
 import type { AdminUser } from "@/types/user"
 import type { SecondaryAdminPermissions } from "@/types/permissions"
@@ -44,12 +44,17 @@ function readSession(): Session | null {
       : []
     // Fail closed: a scoped session with no scope is unusable and dangerous.
     if (branches.length === 0) return null
+    const permissions = normalizePermissions(parsed.permissions)
+    // Same for a session with no reachable section — if the refresh below
+    // can't reach Firestore, SectionGate would otherwise bounce between
+    // /login and / forever.
+    if (!hasAnyAccessibleSection("secondary_admin", permissions)) return null
     return {
       id,
       email: parsed.email,
       role: "secondary_admin",
       managedBranches: branches,
-      permissions: normalizePermissions(parsed.permissions),
+      permissions,
     }
   } catch {
     return null
@@ -97,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const fresh = await getUserById(existing.id)
           if (cancelled) return
-          if (!fresh) {
+          if (!fresh || !hasAnyAccessibleSection(fresh.role, fresh.permissions)) {
             localStorage.removeItem(SESSION_KEY)
             setSession(null)
           } else {
@@ -142,6 +147,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!user) {
       return { ok: false, error: "Invalid email or password." }
+    }
+
+    // Credentials are already verified here, so this message leaks nothing.
+    if (!hasAnyAccessibleSection(user.role, user.permissions)) {
+      return { ok: false, error: "No sections assigned to this account. Contact an admin to request access." }
     }
 
     const nextSession: Session = {

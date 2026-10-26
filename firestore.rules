@@ -18,9 +18,9 @@ service cloud.firestore {
     // Inventory snapshot, replaced wholesale on each upload: item docs are
     // tagged with a snapshotId and inventory_meta/current points at the live
     // one (see src/lib/firestore/inventory.ts).
-    // TODO(security gap): the UI restricts this to role "admin", but like
-    // every rule here that is client-side only — any anonymous session can
-    // write. See the nashigold_users TODOs below for the real fix.
+    // TODO(security gap): the UI restricts this to role "admin" and to
+    // secondary_admins granted permissions.inventory, but like every rule
+    // here that is client-side only — any anonymous session can write. See the nashigold_users TODOs below for the real fix.
     match /inventory/{itemId} {
       allow read, write: if request.auth != null;
     }

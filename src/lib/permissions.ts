@@ -33,16 +33,49 @@ export const APP_SECTIONS = [
 ] as const
 export type AppSection = (typeof APP_SECTIONS)[number]
 
+export const SECTION_PATHS: Record<AppSection, string> = {
+  dashboard: "/",
+  employees: "/employees",
+  branches: "/branches",
+  inventory: "/inventory",
+  attendance: "/attendance",
+  "leave-requests": "/leave-requests",
+  complaints: "/complaints",
+  announcements: "/announcements",
+  users: "/users",
+}
+
+/** Where to send a user who can't open the section they asked for. `/` is
+ * itself gated (dashboard), so redirecting there blindly would loop for a
+ * secondary_admin without dashboard access. `null` = nowhere reachable. */
+export function firstAccessibleSectionPath(
+  role: Role | null,
+  permissions: SecondaryAdminPermissions | null
+): string | null {
+  const section = APP_SECTIONS.find((s) => canAccessSection(role, s, permissions))
+  return section ? SECTION_PATHS[section] : null
+}
+
+/** A secondary_admin with every section switched off can't do anything,
+ * so login and session refresh refuse them (fail closed). */
+export function hasAnyAccessibleSection(
+  role: Role | null,
+  permissions: SecondaryAdminPermissions | null
+): boolean {
+  return firstAccessibleSectionPath(role, permissions) !== null
+}
+
 /** Fail-closed starting point for a new secondary_admin, and what a
  * malformed/missing `permissions` field degrades to. */
 export const DEFAULT_SECONDARY_ADMIN_PERMISSIONS: SecondaryAdminPermissions = {
-  dashboard: { scopeToManagedBranches: true },
-  employees: { add: false, edit: false, delete: false },
+  dashboard: { enabled: false, scopeToManagedBranches: true },
+  employees: { enabled: false, add: false, edit: false, delete: false },
   branches: { enabled: false },
-  attendance: { scopeToManagedBranches: true },
+  inventory: { enabled: false, upload: false },
+  attendance: { enabled: false, scopeToManagedBranches: true },
   leaveRequests: { enabled: false, scopeToManagedBranches: true },
   complaints: { enabled: false },
-  announcements: { add: false, edit: false, delete: false },
+  announcements: { enabled: false, add: false, edit: false, delete: false },
 }
 
 /**
@@ -58,21 +91,30 @@ export function normalizePermissions(raw: unknown): SecondaryAdminPermissions {
     const o = obj && typeof obj === "object" ? (obj as Record<string, unknown>) : {}
     return typeof o[key] === "boolean" ? (o[key] as boolean) : false
   }
+  const inventoryEnabled = bool(r.inventory, "enabled")
   return {
-    dashboard: { scopeToManagedBranches: true },
+    dashboard: { enabled: bool(r.dashboard, "enabled"), scopeToManagedBranches: true },
     employees: {
+      enabled: bool(r.employees, "enabled"),
       add: bool(r.employees, "add"),
       edit: bool(r.employees, "edit"),
       delete: bool(r.employees, "delete"),
     },
     branches: { enabled: false },
-    attendance: { scopeToManagedBranches: true },
+    inventory: {
+      enabled: inventoryEnabled,
+      // Upload without section access is meaningless — never let a
+      // hand-edited document grant it on its own.
+      upload: inventoryEnabled && bool(r.inventory, "upload"),
+    },
+    attendance: { enabled: bool(r.attendance, "enabled"), scopeToManagedBranches: true },
     leaveRequests: {
       enabled: bool(r.leaveRequests, "enabled"),
       scopeToManagedBranches: true,
     },
     complaints: { enabled: false },
     announcements: {
+      enabled: bool(r.announcements, "enabled"),
       add: bool(r.announcements, "add"),
       edit: bool(r.announcements, "edit"),
       delete: bool(r.announcements, "delete"),
@@ -91,14 +133,18 @@ export function canAccessSection(
   if (role !== "secondary_admin" || !permissions) return false
   switch (section) {
     case "dashboard":
+      return permissions.dashboard.enabled
     case "employees":
+      return permissions.employees.enabled
     case "attendance":
+      return permissions.attendance.enabled
     case "announcements":
-      return true
+      return permissions.announcements.enabled
     case "leave-requests":
       return permissions.leaveRequests.enabled
-    case "branches":
     case "inventory":
+      return permissions.inventory.enabled
+    case "branches":
     case "complaints":
     case "users":
       return false
@@ -113,7 +159,7 @@ export function canEmployeeAction(
 ): boolean {
   if (role === "admin") return true
   if (role !== "secondary_admin" || !permissions) return false
-  return permissions.employees[action]
+  return permissions.employees.enabled && permissions.employees[action]
 }
 
 /** Add/edit/delete on announcements, gated per-user for secondary_admin. */
@@ -124,7 +170,17 @@ export function canAnnouncementAction(
 ): boolean {
   if (role === "admin") return true
   if (role !== "secondary_admin" || !permissions) return false
-  return permissions.announcements[action]
+  return permissions.announcements.enabled && permissions.announcements[action]
+}
+
+/** Inventory upload (replaces the whole snapshot), gated per-user for secondary_admin. */
+export function canUploadInventory(
+  role: Role | null,
+  permissions: SecondaryAdminPermissions | null
+): boolean {
+  if (role === "admin") return true
+  if (role !== "secondary_admin" || !permissions) return false
+  return permissions.inventory.enabled && permissions.inventory.upload
 }
 
 /** `null` scope = unrestricted. */

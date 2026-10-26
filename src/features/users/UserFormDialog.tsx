@@ -1,9 +1,13 @@
 import { useEffect } from "react"
-import { Controller, useForm } from "react-hook-form"
+import { Controller, useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 import { useBranches } from "@/hooks/use-branches"
-import { DEFAULT_SECONDARY_ADMIN_PERMISSIONS } from "@/lib/permissions"
+import {
+  DEFAULT_SECONDARY_ADMIN_PERMISSIONS,
+  hasAnyAccessibleSection,
+  normalizePermissions,
+} from "@/lib/permissions"
 import type { SecondaryAdminWriteValues } from "@/lib/firestore/users"
 import {
   userSchema,
@@ -79,6 +83,14 @@ export function UserFormDialog({
     defaultValues: buildDefaultValues(user),
   })
 
+  const watchedPermissions = useWatch({ control, name: "permissions" })
+  // Reuses the real access check (normalize fills in the fixed keys) so
+  // the warning can't drift from what login actually enforces.
+  const hasNoSections = !hasAnyAccessibleSection(
+    "secondary_admin",
+    normalizePermissions(watchedPermissions)
+  )
+
   useEffect(() => {
     if (open) {
       reset(buildDefaultValues(user))
@@ -95,13 +107,27 @@ export function UserFormDialog({
       email: values.email,
       managedBranches: values.managedBranches,
       permissions: {
-        dashboard: { scopeToManagedBranches: true },
-        employees: values.permissions.employees,
+        dashboard: { enabled: values.permissions.dashboard.enabled, scopeToManagedBranches: true },
+        employees: {
+          enabled: values.permissions.employees.enabled,
+          add: values.permissions.employees.enabled && values.permissions.employees.add,
+          edit: values.permissions.employees.enabled && values.permissions.employees.edit,
+          delete: values.permissions.employees.enabled && values.permissions.employees.delete,
+        },
         branches: { enabled: false },
-        attendance: { scopeToManagedBranches: true },
+        inventory: {
+          enabled: values.permissions.inventory.enabled,
+          upload: values.permissions.inventory.enabled && values.permissions.inventory.upload,
+        },
+        attendance: { enabled: values.permissions.attendance.enabled, scopeToManagedBranches: true },
         leaveRequests: { ...values.permissions.leaveRequests, scopeToManagedBranches: true },
         complaints: { enabled: false },
-        announcements: values.permissions.announcements,
+        announcements: {
+          enabled: values.permissions.announcements.enabled,
+          add: values.permissions.announcements.enabled && values.permissions.announcements.add,
+          edit: values.permissions.announcements.enabled && values.permissions.announcements.edit,
+          delete: values.permissions.announcements.enabled && values.permissions.announcements.delete,
+        },
       },
       ...(values.password ? { password: values.password } : {}),
     }
@@ -196,6 +222,11 @@ export function UserFormDialog({
             </Field>
           </FieldGroup>
 
+          {hasNoSections && (
+            <p className="shrink-0 pt-3 text-sm text-destructive">
+              This user has no sections enabled and won't be able to sign in.
+            </p>
+          )}
           <DialogFooter className="shrink-0">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving…" : "Save"}

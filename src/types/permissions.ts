@@ -8,11 +8,18 @@
  * with these literal values. See src/lib/permissions.ts.
  */
 export interface SecondaryAdminPermissions {
-  dashboard: { scopeToManagedBranches: true }
-  employees: { add: boolean; edit: boolean; delete: boolean }
+  /** When enabled, always read-only and scoped to managed branches. */
+  dashboard: { enabled: boolean; scopeToManagedBranches: true }
+  /** `add`/`edit`/`delete` are only honoured while `enabled` is true. */
+  employees: { enabled: boolean; add: boolean; edit: boolean; delete: boolean }
   branches: { enabled: false }
-  attendance: { scopeToManagedBranches: true }
+  /** `upload` replaces the whole snapshot (all branches) and is only
+   * honoured while `enabled` is true. */
+  inventory: { enabled: boolean; upload: boolean }
+  /** When enabled, always read-only and scoped to managed branches. */
+  attendance: { enabled: boolean; scopeToManagedBranches: true }
   leaveRequests: { enabled: boolean; scopeToManagedBranches: true }
   complaints: { enabled: false }
-  announcements: { add: boolean; edit: boolean; delete: boolean }
+  /** `add`/`edit`/`delete` are only honoured while `enabled` is true. */
+  announcements: { enabled: boolean; add: boolean; edit: boolean; delete: boolean }
 }

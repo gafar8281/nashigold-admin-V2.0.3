@@ -3,12 +3,12 @@ import { toast } from "sonner"
 
 import { getInventorySnapshot, replaceInventory } from "@/lib/firestore/inventory"
 import { useAuth } from "@/hooks/use-auth"
-import { canAccessSection } from "@/lib/permissions"
+import { canUploadInventory } from "@/lib/permissions"
 import type { InventoryItem, InventoryItemInput, InventoryMeta } from "@/types/inventory"
 
 export function useInventory() {
   const { role, permissions } = useAuth()
-  const canUpload = canAccessSection(role, "inventory", permissions)
+  const canUpload = canUploadInventory(role, permissions)
 
   const [items, setItems] = useState<InventoryItem[]>([])
   const [meta, setMeta] = useState<InventoryMeta | null>(null)

@@ -44,10 +44,35 @@ export function buildUserColumns(options: {
         ),
     },
     {
+      id: "dashboard",
+      header: "Dashboard",
+      cell: ({ row }) =>
+        row.original.permissions?.dashboard.enabled ? "Enabled" : "—",
+    },
+    {
       id: "employees",
       header: "Employees",
+      cell: ({ row }) => {
+        const employees = row.original.permissions?.employees
+        if (!employees?.enabled) return "—"
+        const crud = summarizeCrud(employees)
+        return crud === "—" ? "View" : `View · ${crud}`
+      },
+    },
+    {
+      id: "inventory",
+      header: "Inventory",
+      cell: ({ row }) => {
+        const inventory = row.original.permissions?.inventory
+        if (!inventory?.enabled) return "—"
+        return inventory.upload ? "View · Upload" : "View"
+      },
+    },
+    {
+      id: "attendance",
+      header: "Attendance",
       cell: ({ row }) =>
-        row.original.permissions ? summarizeCrud(row.original.permissions.employees) : "—",
+        row.original.permissions?.attendance.enabled ? "Enabled" : "—",
     },
     {
       id: "leaveRequests",
@@ -58,8 +83,12 @@ export function buildUserColumns(options: {
     {
       id: "announcements",
       header: "Announcements",
-      cell: ({ row }) =>
-        row.original.permissions ? summarizeCrud(row.original.permissions.announcements) : "—",
+      cell: ({ row }) => {
+        const announcements = row.original.permissions?.announcements
+        if (!announcements?.enabled) return "—"
+        const crud = summarizeCrud(announcements)
+        return crud === "—" ? "View" : `View · ${crud}`
+      },
     },
     {
       id: "actions",

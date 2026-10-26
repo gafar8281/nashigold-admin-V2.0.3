@@ -17,15 +17,27 @@ export const userSchema = z.object({
     .min(1, "Select at least one branch.")
     .max(MAX_BRANCH_IN_VALUES, `Cannot select more than ${MAX_BRANCH_IN_VALUES} branches.`),
   permissions: z.object({
+    dashboard: z.object({
+      enabled: z.boolean(),
+    }),
     employees: z.object({
+      enabled: z.boolean(),
       add: z.boolean(),
       edit: z.boolean(),
       delete: z.boolean(),
+    }),
+    attendance: z.object({
+      enabled: z.boolean(),
+    }),
+    inventory: z.object({
+      enabled: z.boolean(),
+      upload: z.boolean(),
     }),
     leaveRequests: z.object({
       enabled: z.boolean(),
     }),
     announcements: z.object({
+      enabled: z.boolean(),
       add: z.boolean(),
       edit: z.boolean(),
       delete: z.boolean(),
