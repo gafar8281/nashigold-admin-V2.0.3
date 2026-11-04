@@ -24,6 +24,7 @@ export const APP_SECTIONS = [
   "dashboard",
   "employees",
   "branches",
+  "branch-sales",
   "inventory",
   "attendance",
   "leave-requests",
@@ -37,6 +38,7 @@ export const SECTION_PATHS: Record<AppSection, string> = {
   dashboard: "/",
   employees: "/employees",
   branches: "/branches",
+  "branch-sales": "/branch-sales",
   inventory: "/inventory",
   attendance: "/attendance",
   "leave-requests": "/leave-requests",
@@ -145,6 +147,7 @@ export function canAccessSection(
     case "inventory":
       return permissions.inventory.enabled
     case "branches":
+    case "branch-sales":
     case "complaints":
     case "users":
       return false

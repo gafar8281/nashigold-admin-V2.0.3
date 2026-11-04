@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -16,6 +15,7 @@ import { db } from "@/lib/firebase"
 import { requireDb } from "@/lib/firestore/converters"
 import { toEpochMs } from "@/lib/datetime"
 import { getEmployeeCountByBranch } from "@/lib/firestore/employees"
+import { BRANCH_SALES_COLLECTION } from "@/lib/firestore/branch-sales"
 import type { Branch } from "@/types/branch"
 
 const COLLECTION = "nashigold_branches"
@@ -81,7 +81,11 @@ export async function deleteBranch(id: string): Promise<void> {
         `still assigned to it. Reassign them first.`
     )
   }
-  await deleteDoc(doc(requireDb(db), COLLECTION, id))
+  // Cascade the branch's online sales record so it can't outlive the branch.
+  const batch = writeBatch(requireDb(db))
+  batch.delete(doc(requireDb(db), COLLECTION, id))
+  batch.delete(doc(requireDb(db), BRANCH_SALES_COLLECTION, id))
+  await batch.commit()
 }
 
 export async function seedBranches(): Promise<number> {

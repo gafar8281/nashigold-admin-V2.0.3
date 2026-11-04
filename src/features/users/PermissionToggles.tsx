@@ -131,6 +131,11 @@ export function PermissionToggles({ control }: { control: Control<UserFormInput>
       </div>
 
       <div>
+        <p className="mb-2 text-sm font-medium">Online Branch Sales</p>
+        <LockedRow label="Section access" description="Admin only — not available to branch admins." />
+      </div>
+
+      <div>
         <p className="mb-2 text-sm font-medium">Inventory</p>
         <div className="flex flex-col gap-2">
           <Controller

@@ -6,10 +6,13 @@ import { useBranchScope } from "@/hooks/use-branch-scope"
 import { listAttendanceForDate } from "@/lib/firestore/attendance"
 import { getRecentAnnouncements } from "@/lib/firestore/announcements"
 import { getPendingLeaveCount } from "@/lib/firestore/leave-requests"
+import { listBranchSales } from "@/lib/firestore/branch-sales"
+import { scopeByBranch } from "@/lib/permissions"
 import { getRiyadhTodayISO } from "@/lib/datetime"
 import type { ATTENDANCE_STATUSES } from "@/lib/constants"
 import type { Announcement } from "@/types/announcement"
 import type { AttendanceRecord } from "@/types/attendance"
+import type { BranchSales } from "@/types/branch-sales"
 
 type AttendanceSummary = Record<(typeof ATTENDANCE_STATUSES)[number], number>
 
@@ -22,6 +25,7 @@ export function useDashboardData() {
   const { managedBranches } = useBranchScope()
 
   const [todayRecords, setTodayRecords] = useState<AttendanceRecord[]>([])
+  const [onlineSales, setOnlineSales] = useState<BranchSales[]>([])
   const [recentAnnouncements, setRecentAnnouncements] = useState<Announcement[]>([])
   const [pendingLeaveCount, setPendingLeaveCount] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -34,13 +38,23 @@ export function useDashboardData() {
       setIsLoading(true)
       setError(null)
       try {
-        const [records, announcements, leaveCount] = await Promise.all([
+        const [records, announcements, leaveCount, branchSales] = await Promise.all([
           listAttendanceForDate(getRiyadhTodayISO()),
           getRecentAnnouncements(5),
           getPendingLeaveCount({ branches: managedBranches }),
+          // Non-fatal: a failure here shouldn't take down attendance/announcements.
+          listBranchSales().catch(() => null),
         ])
         if (!cancelled) {
           setTodayRecords(records)
+          // The Online Branch Sales page is admin-only, but its figures feed
+          // the chart for a branch admin's own managedBranches.
+          setOnlineSales(
+            branchSales ? scopeByBranch(branchSales, managedBranches, (r) => r.branch) : []
+          )
+          if (!branchSales) {
+            setError("Online branch sales couldn't be loaded — the chart shows employee figures only.")
+          }
           setRecentAnnouncements(announcements)
           setPendingLeaveCount(leaveCount)
         }
@@ -81,6 +95,7 @@ export function useDashboardData() {
     employees,
     headcount: employees.length,
     attendanceSummary,
+    onlineSales,
     recentAnnouncements,
     pendingLeaveCount,
     isLoading: isLoading || employeesLoading,

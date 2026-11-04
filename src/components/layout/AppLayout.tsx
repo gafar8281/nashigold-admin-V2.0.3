@@ -11,6 +11,7 @@ import {
   MessageSquareWarningIcon,
   MonitorSmartphoneIcon,
   PackageIcon,
+  ShoppingCartIcon,
   LogOutIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -46,6 +47,7 @@ const NAV_ITEMS: Array<{ section: AppSection; to: string; label: string; icon: L
   { section: "dashboard", to: SECTION_PATHS["dashboard"], label: "Dashboard", icon: LayoutDashboardIcon },
   { section: "employees", to: SECTION_PATHS["employees"], label: "Employees", icon: UsersIcon },
   { section: "branches", to: SECTION_PATHS["branches"], label: "Branches", icon: Building2Icon },
+  { section: "branch-sales", to: SECTION_PATHS["branch-sales"], label: "Online Branch Sales", icon: ShoppingCartIcon },
   { section: "inventory", to: SECTION_PATHS["inventory"], label: "Inventory", icon: PackageIcon },
   { section: "attendance", to: SECTION_PATHS["attendance"], label: "Attendance", icon: CalendarCheckIcon },
   { section: "leave-requests", to: SECTION_PATHS["leave-requests"], label: "Leave Requests", icon: CalendarDaysIcon },

@@ -50,6 +50,7 @@ export function DashboardPage() {
     employees,
     headcount,
     attendanceSummary,
+    onlineSales,
     recentAnnouncements,
     pendingLeaveCount,
     isLoading,
@@ -59,7 +60,10 @@ export function DashboardPage() {
   const [unit, setUnit] = useState<TargetUnit>("Grams")
   const { managedBranches } = useBranchScope()
 
-  const branchPerformance = useMemo(() => computeBranchPerformance(employees), [employees])
+  const branchPerformance = useMemo(
+    () => computeBranchPerformance(employees, onlineSales),
+    [employees, onlineSales]
+  )
   const chartData = useMemo(() => toChartData(branchPerformance, unit), [branchPerformance, unit])
 
   const description =
@@ -99,8 +103,8 @@ export function DashboardPage() {
         <CardHeader>
           <CardTitle>Branch performance</CardTitle>
           <CardDescription>
-            Monthly target vs. achieved, by branch. Only employees targeted in {unit} are
-            counted.
+            Monthly target vs. achieved by branch — employee targets plus online branch sales.
+            Only figures in {unit} are counted.
           </CardDescription>
           <CardAction>
             <Select value={unit} onValueChange={(value) => setUnit((value as TargetUnit) ?? "Grams")}>
@@ -120,8 +124,8 @@ export function DashboardPage() {
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-64 w-full" />
-          ) : employees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No employee data yet.</p>
+          ) : employees.length === 0 && onlineSales.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No sales data yet.</p>
           ) : chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground">No branches have targets in {unit}.</p>
           ) : (
